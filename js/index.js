@@ -481,7 +481,7 @@ function TablaUserAdmin() {
         }
     }).catch(function (err) {
         console.error(err);
-        alert("Error al consultar mensajes.");
+        alert("Error al consultar Usuarios.");
     })
 }
 //TRAER TODOS LOS ADMIN USER
@@ -575,6 +575,124 @@ function DeleteAdminUserById(IdAdminUser) {
         });
     });
 }
+/************************** METODOS RESERVACIONES ***************************/
+$('#RservationTable').on('click', 'tbody tr', function (event) {
+    $(this).addClass('highlight').siblings().removeClass('highlight');
+});
+//TARER INFORMACION RESERVACINES
+function TablaReservaciones() {
+    GetReservacionesAll().then(function (data) {
+        $("#tablaReservaciones").empty();
+        if (data != null) {
+            data.forEach(function (element) {
+                let row = $("<tr class=\"clickableRow\">");
+                row.append($("<td class=\"id\">").text(element.idReservation));
+                row.append($("<td>").text(element.startDate));
+                row.append($("<td>").text(element.devolutionDate));
+                row.append($("<td>").text(element.score));
+                row.append($("<td>").text(element.cabin.name));
+                row.append($("<td>").text(element.client.idClient));
+                row.append($("<td>").text(element.client.name));
+                row.append($("<td>").text(element.client.email));
+                $("#tablaReservaciones").append(row);
+            });
+        }
+    }).catch(function (err) {
+        console.error(err);
+        alert("Error al consultar Reservaciones.");
+    })
+}
+//TARER TODAS LAS RESERVACIONES
+function GetReservacionesAll() {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/all",
+            method: "GET",
+            dataType: "json",
+            success: function (data) {
+                resolve(data);
+            }, error: function (error) {
+                reject(error);
+            }
+        });
+    });
+}
+//TRAER INFROMACION DE UN RESERVACION POR SU ID
+function GetReservacionById(IdReservacion) {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/" + IdReservacion,
+            method: "GET",
+            dataType: "json",
+            success: function (data) {
+                resolve(data);
+            }, error: function (error) {
+                reject(error);
+            }
+        });
+    });
+}
+//INSERTAR INFRORMACION A TABLA RESERVACIONES
+function PostReservaciones(FechaInicial, FechaFinal, IdCliente, IdCabana) {
+    let reservaciones = {
+        startDate: FechaInicial,
+        devolutionDate: FechaFinal,
+        client: { idClient: IdCliente },
+        cabin: { id: IdCabana }
+    }
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/save",
+            method: "POST",
+            contentType: 'application/json',
+            data: JSON.stringify(reservaciones),
+            success: function (data) {
+                resolve(data);
+            },
+            error: function (err) {
+                reject(err);
+            }
+        });
+    });
+}
+//ACTUALIZAR INFORMACION DE UNA RESERVACION POR SU ID
+function PutReservacionesById(IdReservacion, FechaInicial, FechaFinal) {
+    let reservaciones = {
+        idReservation: IdReservacion,
+        startDate: FechaInicial,
+        devolutionDate: FechaFinal
+    }
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/update",
+            method: "PUT",
+            contentType: 'application/json',
+            data: JSON.stringify(reservaciones),
+            success: function (data) {
+                resolve(data);
+            },
+            error: function (err) {
+                reject(err);
+            }
+        });
+    });
+}
+//ELIMINAR INFORMACION DE UNA RESERVACION POR SU ID
+function DeleteReservacionesById(IdReservacion) {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/" + IdReservacion,
+            method: "DELETE",
+            dataType: "json",
+            success: function (data) {
+                resolve(data);
+            },
+            error: function (err) {
+                reject(err);
+            }
+        });
+    });
+}
 /*********** METODO PARA SABER EL MODULO DONDE ESTA EL USUARIO ***********/
 function getEventTarget(e) {
     e = e || window.event;
@@ -597,8 +715,29 @@ document.getElementById('pills-tab').addEventListener("click", function (event) 
         TablaMensajes();
     } else if (Modulo == "Usuarios Admin") {
         TablaUserAdmin();
+    } else if (Modulo == "Reservaciones") {
+        TablaReservaciones();
     }
 });
+/************************** EVENTO PARA CARGAR CALENDARIO DATERANGE ***************************/
+function CrearEventoRangePicker() {
+    $('input[name="datefilter"]').daterangepicker({
+        autoUpdateInput: true,
+        locale: {
+            cancelLabel: 'Limpiar',
+            applyLabel: 'Aceptar',
+            format: 'YYYY-MM-DD'
+        }
+    });
+
+    $('input[name="datefilter"]').on('apply.daterangepicker', function (ev, picker) {
+        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+    });
+
+    $('input[name="datefilter"]').on('cancel.daterangepicker', function (ev, picker) {
+        $(this).val('');
+    });
+}
 /************************** EVENTOS BOTONES ***************************/
 //EVENTO BOTON ACTUALIZAR
 const btnActualizar = document.getElementById("btnActualizar");
@@ -687,6 +826,23 @@ btnActualizar.addEventListener("click", function (event) {
                 console.error(err);
                 alert("Error al consultar usaurio admin");
             })
+        } else if (Modulo == "Reservaciones") {
+            HeaderFooterPopup("Actualizar Reservación", "Actualizar");
+            GetReservacionById(IdData).then(function (data) {
+                let ObFechas = "";
+                ObFechas = data.startDate;
+                let FechaIni = ObFechas.split('T')[0];
+                ObFechas = data.devolutionDate;
+                let FechaFin = ObFechas.split('T')[0];
+                let Content = $("<label for=\"exampleFormControlTextarea1\" class=\"form-label\" style=\"min-width: 100%;\">Rango Fechas:</label>");
+                Content.append($("<input type=\"text\" class=\"form-control\" placeholder=\"Fecha Inicio - Fecha Fin\" name=\"datefilter\" id=\"ReserDatesUpdate\" style=\"min-width: 100%;\" value=\"" + FechaIni + " - " + FechaFin + "\" readonly />"));
+                $('#content-popup').append(Content);
+                CrearEventoRangePicker();
+                myModal.show();
+            }).catch(function (err) {
+                console.error(err);
+                alert("Error al consultar la reserva.");
+            })
         }
     } else {
         alert("Debe seleccionar " + Modulo);
@@ -748,7 +904,6 @@ btnCrear.addEventListener("click", function (event) {
         myModal.show();
     } else if (Modulo == "Mensajes") {
         GetCabanasAll().then(function (dataCabin) {
-            console.log(dataCabin);
             if (dataCabin.length > 0) {
                 GetClientesAll().then(function (dataClient) {
                     if (dataClient.length > 0) {
@@ -798,6 +953,46 @@ btnCrear.addEventListener("click", function (event) {
         Content.append($("<input type=\"text\" class=\"form-control\" id=\"PassAdminCreate\" placeholder=\"Contraseña\" style=\"min-width: 100%;\" value=\"\" />"));
         $('#content-popup').append(Content);
         myModal.show();
+    } else if (Modulo == "Reservaciones") {
+        HeaderFooterPopup("Crear Categoria", "Crear");
+        GetClientesAll().then(function (dataClient) {
+            if (dataClient.length > 0) {
+                GetCabanasAll().then(function (dataCabin) {
+                    if (dataCabin.length > 0) {
+                        HeaderFooterPopup("Crear Reservación", "Crear");
+                        let Content = ($("<label class=\"form-label\" style=\"min-width: 100%;\">Cabaña:</label>"));
+                        Content.append($("<select class=\"form-select\" aria-label=\"Default select example\" id=\"ReserCabinCreate\"  style=\"min-width: 100%;\" />"));
+                        Content.append($("<label for=\"exampleFormControlTextarea1\" class=\"form-label\">Cliente:</label>"));
+                        Content.append($("<select class=\"form-select\" aria-label=\"Default select example\" id=\"ReserClientCreate\"  style=\"min-width: 100%;\" />"));
+                        Content.append($("<label for=\"exampleFormControlTextarea1\" class=\"form-label\">Rango Fechas:</label>"));
+                        Content.append($("<input type=\"text\" class=\"form-control\" placeholder=\"Fecha Inicio - Fecha Fin\" name=\"datefilter\" id=\"ReserDatesCreate\" style=\"min-width: 100%;\" value=\"\" readonly />"));
+                        $('#content-popup').append(Content);
+                        dataCabin.forEach(function (element) {
+                            let OptionItem = $("<option>");
+                            OptionItem.attr('value', element.id);
+                            OptionItem.text(element.name);
+                            $("#ReserCabinCreate").append(OptionItem);
+                        });
+                        dataClient.forEach(function (element) {
+                            let OptionItem = $("<option>");
+                            OptionItem.attr('value', element.idClient);
+                            OptionItem.text(element.name);
+                            $("#ReserClientCreate").append(OptionItem);
+                        });
+                        CrearEventoRangePicker();
+                        myModal.show();
+                    }
+                }).catch(function (err) {
+                    console.error(err);
+                    alert("Error al consultar cabanañas.");
+                })
+            } else {
+                alert("Debe crear al menos un cliente para ingresar reservación");
+            }
+        }).catch(function (err) {
+            console.error(err);
+            alert("Error al consultar Clientes.");
+        })
     }
 });
 //EVENTO BOTON ELIMINAR
@@ -884,6 +1079,22 @@ btnEliminar.addEventListener("click", function (event) {
             }).catch(function (err) {
                 console.error(err);
                 alert("Error al consultar el usuario admin.");
+            })
+        } else if (Modulo == "Reservaciones") {
+            GetReservacionById(IdData).then(function (data) {
+                let IdReservacion = data.idReservation;
+                if (confirm('Desea eliminar la reservación ID: ' + IdReservacion + '?')) {
+                    DeleteReservacionesById(IdReservacion).then(function () {
+                        TablaReservaciones();
+                        alert("Reservación eliminada correctamente.");
+                    }).catch(function (err) {
+                        console.error(err);
+                        alert("Error al consultar reservación.");
+                    })
+                }
+            }).catch(function (err) {
+                console.error(err);
+                alert("Error al consultar la reservación.");
             })
         }
     } else {
@@ -983,6 +1194,24 @@ btnSalvar.addEventListener("click", function (event) {
                 } else {
                     alert("Todos los campos son obligatorios.");
                 }
+            } else if (Modulo == "Reservaciones") {
+                let Fechas = $('#ReserDatesUpdate').val();
+                if (Fechas != "") {
+                    if (confirm("¿Esta seguro que desea actualizar la reserva?")) {
+                        let FechaIni = Fechas.split(' - ')[0];
+                        let FechaFin = Fechas.split(' - ')[1];
+                        PutReservacionesById(IdData, FechaIni, FechaFin).then(function () {
+                            TablaReservaciones();
+                            alert("Reservación actualizada correctamente.");
+                            myModal.hide();
+                        }).catch(function (err) {
+                            console.error(err);
+                            alert("No se pudo actualizar la reserva.");
+                        })
+                    }
+                } else {
+                    alert("Todos los campos son obligatorios.");
+                }
             }
         }
     } else if (Opcion == 1) {
@@ -1068,6 +1297,25 @@ btnSalvar.addEventListener("click", function (event) {
             } else {
                 alert("Todos los campos son obligatorios.");
             }
+        } else if (Modulo == "Reservaciones") {
+            let ReIdCliente = $('#ReserClientCreate').val();
+            let ReIdCabana = $('#ReserCabinCreate').val();
+            let Fechas = $('#ReserDatesCreate').val();
+            if (ReIdCliente != "" && ReIdCabana != "" && Fechas != "") {
+                Fechas = Fechas.split(' - ');
+                let FechaIni = Fechas[0];
+                let FechaFin = Fechas[1];
+                PostReservaciones(FechaIni, FechaFin, ReIdCliente, ReIdCabana).then(function () {
+                    TablaReservaciones();
+                    alert("Reservación creada correctamente.");
+                    myModal.hide();
+                }).catch(function (err) {
+                    console.log(err);
+                    alert("Error al crear reservación.");
+                })
+            } else {
+                alert("Todos los campos son obligatorios.");
+            }
         }
     }
 });
@@ -1075,7 +1323,7 @@ var SelectedRow = null;
 /*********** OBTENER INFORMACION DE LA LINEA SELECCIONADA ***********/
 function GetDataRowSelected(param) {
     let Id = null;
-    let TableSelected = (param == "Cabañas") ? '#tablaCabana' : (param == "Categoria") ? "#tablaCategoria" : (param == "Clientes") ? '#tablaClientes' : (param == "Mensajes") ? '#tablaMensajes' : '';
+    let TableSelected = (param == "Cabañas") ? '#tablaCabana' : (param == "Categoria") ? "#tablaCategoria" : (param == "Clientes") ? '#tablaClientes' : (param == "Mensajes") ? '#tablaMensajes' : (param == "Usuarios Admin") ? '#tablaAdminUsers' : (param == "Reservaciones") ? '#tablaReservaciones' : '';
     TableSelected += ' .highlight';
     $(TableSelected).each(function () {
         Id = $(this).find(".id").html();
