@@ -16,7 +16,7 @@ function TablaCabanas() {
                 row.append($("<td class=\"brand\">").text(element.brand));
                 row.append($("<td class=\"rooms\">").text(element.rooms));
                 row.append($("<td class=\"description\">").text(element.description));
-                row.append($("<td class=\"category\">").text(element.category.name));
+                row.append($("<td class=\"category\">").text(element.category?.name));
                 $("#tablaCabana").append(row);
             });
         }
@@ -693,6 +693,118 @@ function DeleteReservacionesById(IdReservacion) {
         });
     });
 }
+
+
+/************************** METODOS REPORTES ***************************/
+$('#ReportesTable1').on('click', 'tbody tr', function (event) {
+    $(this).addClass('highlight').siblings().removeClass('highlight');
+});
+
+$('#ReportesTable2').on('click', 'tbody tr', function (event) {
+    $(this).addClass('highlight').siblings().removeClass('highlight');
+});
+
+$('#ReportesTable3').on('click', 'tbody tr', function (event) {
+    $(this).addClass('highlight').siblings().removeClass('highlight');
+});
+//TARER INFORMACION REPORTES
+function TablaReportes() {
+    GetReporte1().then(function (data) {
+        $("#tablaReporte1").empty();
+        if (data != null) {
+            data.forEach(function (element) {
+                let row = $("<tr class=\"clickableRow\">");
+                row.append($("<td>").text(element.client.name));
+                row.append($("<td>").text(element.total));
+                $("#tablaReporte1").append(row);
+            });
+        }
+    }).catch(function (err) {
+        console.error(err);
+        alert("Error al consultar Reportes 1.");
+    })
+
+
+    let Fechas = $('#ReportDates').val();
+    let FechaIni;
+    let FechaFin;
+    if (Fechas != "") {
+        FechaIni = Fechas.split(' - ')[0];
+        FechaFin = Fechas.split(' - ')[1];
+    } else {
+        FechaIni = "2020-12-19";
+        FechaFin = "2021-01-19";
+    }
+    CrearEventoRangePicker();
+
+    GetReporte2(FechaIni, FechaFin).then(function (data) {
+        $("#tablaReporte2").empty();
+        if (data != null) {
+            let row = $("<tr class=\"clickableRow\">");
+            row.append($("<td>").text(data));
+            $("#tablaReporte2").append(row);
+        }
+    }).catch(function (err) {
+        console.error(err);
+        alert("Error al consultar Reportes 2.");
+    })
+
+    GetReporte3().then(function (data) {
+        $("#tablaReporte3").empty();
+        if (data != null) {
+            let row = $("<tr class=\"clickableRow\">");
+            row.append($("<td>").text(data.completed));
+            row.append($("<td>").text(data.cancelled));
+            $("#tablaReporte3").append(row);
+        }
+    }).catch(function (err) {
+        console.error(err);
+        alert("Error al consultar Reportes 3.");
+    })
+}
+//TARER TODOS LOS REPORTES
+function GetReporte1() {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/report-clients",
+            method: "GET",
+            dataType: "json",
+            success: function (data) {
+                resolve(data);
+            }, error: function (error) {
+                reject(error);
+            }
+        });
+    });
+}
+function GetReporte2(fechaInicio, fechaFin) {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/report-dates-amount/" + fechaInicio + "/" + fechaFin,
+            method: "GET",
+            dataType: "json",
+            success: function (data) {
+                resolve(data);
+            }, error: function (error) {
+                reject(error);
+            }
+        });
+    });
+}
+function GetReporte3() {
+    return new Promise(function (resolve, reject) {
+        $.ajax({
+            url: urlBase + "Reservation/report-status",
+            method: "GET",
+            dataType: "json",
+            success: function (data) {
+                resolve(data);
+            }, error: function (error) {
+                reject(error);
+            }
+        });
+    });
+}
 /*********** METODO PARA SABER EL MODULO DONDE ESTA EL USUARIO ***********/
 function getEventTarget(e) {
     e = e || window.event;
@@ -717,6 +829,18 @@ document.getElementById('pills-tab').addEventListener("click", function (event) 
         TablaUserAdmin();
     } else if (Modulo == "Reservaciones") {
         TablaReservaciones();
+    } else if (Modulo == "Reportes") {
+        TablaReportes();
+    }
+
+    if (Modulo == "Reportes") {
+        $('#btnActualizar').hide();
+        $('#btnEliminar').hide();
+        $('#btnCrear').hide();
+    } else {
+        $('#btnActualizar').show();
+        $('#btnEliminar').show();
+        $('#btnCrear').show();
     }
 });
 /************************** EVENTO PARA CARGAR CALENDARIO DATERANGE ***************************/
@@ -732,11 +856,16 @@ function CrearEventoRangePicker() {
 
     $('input[name="datefilter"]').on('apply.daterangepicker', function (ev, picker) {
         $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+        if (Modulo == "Reportes") {
+            TablaReportes();
+        }
     });
 
     $('input[name="datefilter"]').on('cancel.daterangepicker', function (ev, picker) {
         $(this).val('');
     });
+
+
 }
 /************************** EVENTOS BOTONES ***************************/
 //EVENTO BOTON ACTUALIZAR
@@ -814,8 +943,8 @@ btnActualizar.addEventListener("click", function (event) {
         } else if (Modulo == "Usuarios Admin") {
             HeaderFooterPopup("Actualizar Usuario Admin", "Actualizar");
             GetAdminUserById(IdData).then(function (data) {
-                let NombreAdmin = data.nombre;
-                let PassAdmin = data.contrasena;
+                let NombreAdmin = data.name;
+                let PassAdmin = data.password;
                 let Content = $("<label class=\"form-label\" style=\"min-width: 100%;\">Nombre:</label>");
                 Content.append($("<input type=\"text\" class=\"form-control\" id=\"NomAdminUser\" placeholder=\"Nombre\" style=\"min-width: 100%;\" value=\"" + NombreAdmin + "\" />"));
                 Content.append($("<label class=\"form-label\" style=\"min-width: 100%;\">Contraseña:</label>"));
@@ -1323,7 +1452,7 @@ var SelectedRow = null;
 /*********** OBTENER INFORMACION DE LA LINEA SELECCIONADA ***********/
 function GetDataRowSelected(param) {
     let Id = null;
-    let TableSelected = (param == "Cabañas") ? '#tablaCabana' : (param == "Categoria") ? "#tablaCategoria" : (param == "Clientes") ? '#tablaClientes' : (param == "Mensajes") ? '#tablaMensajes' : (param == "Usuarios Admin") ? '#tablaAdminUsers' : (param == "Reservaciones") ? '#tablaReservaciones' : '';
+    let TableSelected = (param == "Cabañas") ? '#tablaCabana' : (param == "Categoria") ? "#tablaCategoria" : (param == "Clientes") ? '#tablaClientes' : (param == "Mensajes") ? '#tablaMensajes' : (param == "Usuarios Admin") ? '#tablaAdminUsers' : (param == "Reservaciones") ? '#tablaReservaciones' : (param == "Reportes") ? '#tablaReporte1' : '';
     TableSelected += ' .highlight';
     $(TableSelected).each(function () {
         Id = $(this).find(".id").html();
